@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美食节优惠券系统</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- QRCode.js -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- html5-qrcode for scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- 修复手机端扫描问题的兼容性脚本 -->
+    <script>
+        // 检测是否为移动设备
+        function isMobileDevice() {
+            return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+        }
+        
+        // 检测浏览器是否支持摄像头
+        function checkCameraSupport() {
+            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        }
+    </script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF5722',
+                        secondary: '#FF9800',
+                        accent: '#E91E63',
+                        dark: '#333333',
+                        light: '#FFFFFF'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            .bg-gradient-primary {
+                background: linear-gradient(135deg, #FF5722 0%, #FF9800 100%);
+            }
+            .bg-gradient-secondary {
+                background: linear-gradient(135deg, #673AB7 0%, #3F51B5 100%);
+            }
+            .bg-gradient-tertiary {
+                background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+            }
+            .coupon-dash-border {
+                border: 2px dashed #FF5722;
+            }
+            .coupon-dash-border-secondary {
+                border: 2px dashed #673AB7;
+            }
+            .coupon-dash-border-tertiary {
+                border: 2px dashed #4CAF50;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-gradient-primary text-white shadow-lg">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/5d4d3dfef7b14422a44644b78a4c47d6~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=202605122237250E4A0F715107C28E631F&rrcfp=f06b921b&x-expires=1781188706&x-signature=G3tWxvi6gSWq22eO1jbiF9GiRUs%3D" alt="美食节标志" class="h-10 w-10">
+                <h1 class="text-xl md:text-2xl font-bold">美食节优惠券系统</h1>
+            </div>
+            <div class="hidden md:flex space-x-4">
+                <button id="tab-generate" class="px-4 py-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-300 font-medium">生成优惠券</button>
+                <button id="tab-manage" class="px-4 py-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-all duration-300">管理优惠券</button>
+                <button id="tab-verify" class="px-4 py-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-all duration-300">核销优惠券</button>
+                <button id="tab-stats" class="px-4 py-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-all duration-300">数据统计</button>
+            </div>
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-white focus:outline-none">
+                    <i class="fa fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <!-- 移动端菜单 -->
+        <div id="mobile-menu" class="hidden md:hidden bg-primary bg-opacity-95">
+            <div class="container mx-auto px-4 py-2 flex flex-col space-y-2">
+                <button id="mobile-tab-generate" class="px-4 py-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-300 text-left font-medium">生成优惠券</button>
+                <button id="mobile-tab-manage" class="px-4 py-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-all duration-300 text-left">管理优惠券</button>
+                <button id="mobile-tab-verify" class="px-4 py-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-all duration-300 text-left">核销优惠券</button>
+                <button id="mobile-tab-stats" class="px-4 py-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-all duration-300 text-left">数据统计</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- 生成优惠券模块 -->
+        <section id="generate-section" class="block">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fa fa-plus-circle text-primary mr-2"></i>
+                    生成优惠券
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 左侧表单 -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">优惠券类型</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="coupon-type" value="cash" class="form-radio text-primary" checked>
+                                    <span class="ml-2">满减券</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="coupon-type" value="discount" class="form-radio text-primary">
+                                    <span class="ml-2">折扣券</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="cash-amount-container">
+                            <label for="coupon-amount" class="block text-gray-700 font-medium mb-2">优惠金额</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">¥</span>
+                                <input type="number" id="coupon-amount" class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入优惠金额" value="50">
+                            </div>
+                        </div>
+                        
+                        <div id="discount-rate-container" class="hidden">
+                            <label for="coupon-discount" class="block text-gray-700 font-medium mb-2">折扣比例</label>
+                            <div class="relative">
+                                <input type="number" id="coupon-discount" class="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入折扣比例" value="8.5" min="0.1" max="9.9" step="0.1">
+                                <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">折</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="coupon-condition" class="block text-gray-700 font-medium mb-2">使用条件</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">满</span>
+                                <input type="number" id="coupon-condition" class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入使用条件" value="100">
+                                <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">元可用</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="coupon-expiry" class="block text-gray-700 font-medium mb-2">有效期至</label>
+                            <input type="date" id="coupon-expiry" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        
+                        <div>
+                            <label for="coupon-description" class="block text-gray-700 font-medium mb-2">优惠描述</label>
+                            <input type="text" id="coupon-description" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入优惠描述" value="全场通用">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">优惠券模板</label>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="template-option selected" data-template="template1">
+                                    <div class="border-2 border-primary rounded-md p-2 cursor-pointer">
+                                        <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/80dc1bada0274d43a11a313576f0e9c6~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=202605122237250E4A0F715107C28E631F&rrcfp=f06b921b&x-expires=1781188702&x-signature=%2FMIfuvnorexGdT%2FC4lWVtNL9WNo%3D" alt="模板1" class="w-full h-20 object-cover rounded">
+                                        <p class="text-center text-sm mt-1">模板1</p>
+                                    </div>
+                                </div>
+                                <div class="template-option" data-template="template2">
+                                    <div class="border-2 border-gray-300 rounded-md p-2 cursor-pointer">
+                                        <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/aac05e9e5b844f9d8e539434e26ea6d0~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=202605122237250E4A0F715107C28E631F&rrcfp=f06b921b&x-expires=1781188698&x-signature=E6j3HlZxWM7Dyz6YBcLD7%2B9HKNI%3D" alt="模板2" class="w-full h-20 object-cover rounded">
+                                        <p class="text-center text-sm mt-1">模板2</p>
+                                    </div>
+                                </div>
+                                <div class="template-option" data-template="template3">
+                                    <div class="border-2 border-gray-300 rounded-md p-2 cursor-pointer">
+                                        <div class="w-full h-20 bg-gradient-tertiary rounded flex items-center justify-center text-white font-bold">
+                                            <span>绿色清新</span>
+                                        </div>
+                                        <p class="text-center text-sm mt-1">模板3</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4">
+                            <button id="generate-coupon-btn" class="w-full bg-gradient-primary text-white py-3 px-6 rounded-md hover:opacity-90 transition-all duration-300 font-bold text-lg flex items-center justify-center">
+                                <i class="fa fa-magic mr-2"></i>
+                                生成优惠券
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧预览 -->
+                    <div class="flex flex-col items-center justify-center">
+                        <div id="coupon-preview" class="w-full max-w-md relative">
+                            <!-- 优惠券模板1 -->
+                            <div id="template1-preview" class="coupon-template block">
+                                <div class="relative w-full h-64 bg-gradient-primary rounded-lg overflow-hidden shadow-lg">
+                                    <!-- 背景装饰 -->
+                                    <div class="absolute top-0 left-0 w-full h-full opacity-10">
+                                        <div class="absolute top-4 left-4 w-16 h-16 bg-white rounded-full"></div>
+                                        <div class="absolute bottom-4 right-4 w-20 h-20 bg-white rounded-full"></div>
+                                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-white rounded-full"></div>
+                                    </div>
+                                    
+                                    <!-- 优惠券内容 -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
+                                        <h3 class="text-3xl font-bold mb-2 text-shadow">美食节优惠券</h3>
+                                        <div class="flex items-baseline mb-4">
+                                            <span class="text-5xl font-extrabold text-shadow" id="preview-value-container">
+                                                ¥<span id="preview-amount">50</span>
+                                            </span>
+                                            <span class="ml-2 text-lg">满<span id="preview-condition">100</span>元可用</span>
+                                        </div>
+                                        <p class="text-center mb-4"><span id="preview-description">全场通用</span></p>
+                                        <p class="text-sm">有效期至: <span id="preview-expiry">2026-12-31</span></p>
+                                        
+                                        <!-- 二维码位置 -->
+                                        <div id="qrcode-container" class="absolute bottom-4 right-4 bg-white p-2 rounded-md">
+                                            <div id="qrcode" class="w-24 h-24"></div>
+                                        </div>
+                                        
+                                        <!-- 券码位置 -->
+                                        <div class="absolute bottom-4 left-4 bg-white bg-opacity-90 px-3 py-1 rounded-md">
+                                            <span class="text-primary font-mono font-bold" id="preview-code">FOOD20260001</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 优惠券模板2 -->
+                            <div id="template2-preview" class="coupon-template hidden">
+                                <div class="relative w-full h-64 bg-gradient-secondary rounded-lg overflow-hidden shadow-lg">
+                                    <!-- 背景装饰 -->
+                                    <div class="absolute top-0 left-0 w-full h-full opacity-10">
+                                        <div class="absolute top-4 right-4 w-16 h-16 bg-white rounded-full"></div>
+                                        <div class="absolute bottom-4 left-4 w-20 h-20 bg-white rounded-full"></div>
+                                    </div>
+                                    
+                                    <!-- 优惠券内容 -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
+                                        <h3 class="text-3xl font-bold mb-2 text-shadow">美食狂欢节</h3>
+                                        <div class="flex items-baseline mb-4">
+                                            <span class="text-5xl font-extrabold text-shadow" id="preview-value-container-2">
+                                                ¥<span id="preview-amount-2">50</span>
+                                            </span>
+                                            <span class="ml-2 text-lg">满<span id="preview-condition-2">100</span>元可用</span>
+                                        </div>
+                                        <p class="text-center mb-4"><span id="preview-description-2">全场通用</span></p>
+                                        <p class="text-sm">有效期至: <span id="preview-expiry-2">2026-12-31</span></p>
+                                        
+                                        <!-- 二维码位置 -->
+                                        <div id="qrcode-container-2" class="absolute bottom-4 right-4 bg-white p-2 rounded-md">
+                                            <div id="qrcode-2" class="w-24 h-24"></div>
+                                        </div>
+                                        
+                                        <!-- 券码位置 -->
+                                        <div class="absolute bottom-4 left-4 bg-white bg-opacity-90 px-3 py-1 rounded-md">
+                                            <span class="text-primary font-mono font-bold" id="preview-code-2">FOOD20260001</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 优惠券模板3 -->
+                            <div id="template3-preview" class="coupon-template hidden">
+                                <div class="relative w-full h-64 bg-gradient-tertiary rounded-lg overflow-hidden shadow-lg">
+                                    <!-- 背景装饰 -->
+                                    <div class="absolute top-0 left-0 w-full h-full opacity-10">
+                                        <div class="absolute top-1/4 left-1/4 w-12 h-12 bg-white rounded-full"></div>
+                                        <div class="absolute bottom-1/4 right-1/4 w-16 h-16 bg-white rounded-full"></div>
+                                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-white rounded-full"></div>
+                                    </div>
+                                    
+                                    <!-- 优惠券内容 -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
+                                        <h3 class="text-3xl font-bold mb-2 text-shadow">绿色美食节</h3>
+                                        <div class="flex items-baseline mb-4">
+                                            <span class="text-5xl font-extrabold text-shadow" id="preview-value-container-3">
+                                                ¥<span id="preview-amount-3">50</span>
+                                            </span>
+                                            <span class="ml-2 text-lg">满<span id="preview-condition-3">100</span>元可用</span>
+                                        </div>
+                                        <p class="text-center mb-4"><span id="preview-description-3">全场通用</span></p>
+                                        <p class="text-sm">有效期至: <span id="preview-expiry-3">2026-12-31</span></p>
+                                        
+                                        <!-- 二维码位置 -->
+                                        <div id="qrcode-container-3" class="absolute bottom-4 right-4 bg-white p-2 rounded-md">
+                                            <div id="qrcode-3" class="w-24 h-24"></div>
+                                        </div>
+                                        
+                                        <!-- 券码位置 -->
+                                        <div class="absolute bottom-4 left-4 bg-white bg-opacity-90 px-3 py-1 rounded-md">
+                                            <span class="text-primary font-mono font-bold" id="preview-code-3">FOOD20260001</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 生成前提示 -->
+                            <div id="preview-placeholder" class="hidden">
+                                <div class="w-full h-64 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center">
+                                    <i class="fa fa-qrcode text-5xl text-gray-300 mb-4"></i>
+                                    <p class="text-gray-500">填写左侧表单并点击生成按钮</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="coupon-actions" class="mt-6 w-full flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                            <button id="download-coupon-btn" class="flex-1 bg-primary text-white py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fa fa-download mr-2"></i>
+                                下载优惠券
+                            </button>
+                            <button id="share-coupon-btn" class="flex-1 bg-secondary text-white py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fa fa-share-alt mr-2"></i>
+                                分享优惠券
+                            </button>
+                            <button id="print-coupon-btn" class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fa fa-print mr-2"></i>
+                                打印优惠券
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 管理优惠券模块 -->
+        <section id="manage-section" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fa fa-list-alt text-primary mr-2"></i>
+                    管理优惠券
+                </h2>
+                
+                <!-- 筛选和搜索 -->
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-4 md:space-y-0">
+                    <div class="flex space-x-2">
+                        <button id="filter-all" class="px-4 py-2 bg-primary text-white rounded-md">全部</button>
+                        <button id="filter-unused" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">未使用</button>
+                        <button id="filter-used" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">已使用</button>
+                        <button id="filter-expired" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">已过期</button>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <input type="text" id="search-coupon" class="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="搜索券码或金额">
+                    </div>
+                </div>
+                
+                <!-- 优惠券列表 -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">券码</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">金额</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">使用条件</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">有效期至</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">状态</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coupon-list" class="divide-y divide-gray-200">
+                            <!-- 优惠券列表将通过JavaScript动态生成 -->
+                            <tr class="text-center">
+                                <td colspan="6" class="py-8 text-gray-500">暂无优惠券数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 分页 -->
+                <div class="flex justify-between items-center mt-6">
+                    <div class="text-sm text-gray-600">
+                        显示 <span id="showing-records">0</span> 条，共 <span id="total-records">0</span> 条
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
+                        <button id="next-page" class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 核销优惠券模块 -->
+        <section id="verify-section" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fa fa-check-circle text-primary mr-2"></i>
+                    核销优惠券
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 左侧扫描区域 -->
+                    <div>
+                        <div class="bg-gray-100 rounded-lg p-4 mb-6">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">扫描二维码</h3>
+                            
+                            <!-- 摄像头支持检测提示 -->
+                            <div id="camera-not-supported" class="hidden w-full h-64 bg-white rounded-lg flex flex-col items-center justify-center p-4">
+                                <i class="fa fa-exclamation-triangle text-5xl text-yellow-500 mb-4"></i>
+                                <p class="text-gray-700 text-center mb-2">您的设备不支持摄像头访问</p>
+                                <p class="text-gray-500 text-sm text-center">请使用手动输入券码的方式进行验证</p>
+                            </div>
+                            
+                            <!-- 摄像头权限被拒绝提示 -->
+                            <div id="camera-permission-denied" class="hidden w-full h-64 bg-white rounded-lg flex flex-col items-center justify-center p-4">
+                                <i class="fa fa-lock text-5xl text-red-500 mb-4"></i>
+                                <p class="text-gray-700 text-center mb-2">摄像头权限被拒绝</p>
+                                <p class="text-gray-500 text-sm text-center mb-4">请在浏览器设置中允许访问摄像头，或使用手动输入券码的方式</p>
+                                <button id="retry-permission-btn" class="bg-primary text-white py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300">
+                                    <i class="fa fa-refresh mr-2"></i>
+                                    重试
+                                </button>
+                            </div>
+                            
+                            <div id="qr-reader" class="w-full h-64 bg-white rounded-lg flex items-center justify-center">
+                                <div id="qr-reader-placeholder" class="text-center">
+                                    <i class="fa fa-camera text-5xl text-gray-400 mb-4"></i>
+                                    <p class="text-gray-500">点击下方按钮开始扫描</p>
+                                    <p class="text-gray-400 text-sm mt-2">请确保已授予摄像头访问权限</p>
+                                </div>
+                                <!-- 扫描区域将在点击开始扫描后显示 -->
+                            </div>
+                            
+                            <!-- 扫描提示覆盖层 -->
+                            <div id="scan-overlay" class="hidden absolute inset-0 pointer-events-none flex items-center justify-center">
+                                <div class="w-64 h-64 border-4 border-primary rounded-lg relative">
+                                    <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary -mt-1 -ml-1"></div>
+                                    <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary -mt-1 -mr-1"></div>
+                                    <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary -mb-1 -ml-1"></div>
+                                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary -mb-1 -mr-1"></div>
+                                    <div class="absolute top-0 left-0 w-full h-full bg-black bg-opacity-30 rounded-lg"></div>
+                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
+                                        <p class="text-lg font-bold">将二维码对准扫描框</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 flex justify-center space-x-4">
+                                <button id="start-scan-btn" class="bg-primary text-white py-2 px-6 rounded-md hover:opacity-90 transition-all duration-300">
+                                    <i class="fa fa-play mr-2"></i>
+                                    开始扫描
+                                </button>
+                                <button id="stop-scan-btn" class="bg-gray-600 text-white py-2 px-6 rounded-md hover:opacity-90 transition-all duration-300 hidden">
+                                    <i class="fa fa-stop mr-2"></i>
+                                    停止扫描
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-100 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">手动输入券码</h3>
+                            <div class="flex">
+                                <input type="text" id="manual-code-input" class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入优惠券码">
+                                <button id="verify-manual-btn" class="bg-primary text-white py-2 px-6 rounded-r-md hover:opacity-90 transition-all duration-300">
+                                    验证
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧验证结果 -->
+                    <div>
+                        <div class="bg-gray-100 rounded-lg p-4 h-full">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">验证结果</h3>
+                            
+                            <!-- 未验证状态 -->
+                            <div id="verify-empty" class="h-64 flex flex-col items-center justify-center text-center">
+                                <i class="fa fa-qrcode text-5xl text-gray-400 mb-4"></i>
+                                <p class="text-gray-500">扫描二维码或输入券码进行验证</p>
+                            </div>
+                            
+                            <!-- 验证中状态 -->
+                            <div id="verify-loading" class="h-64 flex flex-col items-center justify-center hidden">
+                                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+                                <p class="text-gray-700">正在验证优惠券...</p>
+                            </div>
+                            
+                            <!-- 验证成功状态 -->
+                            <div id="verify-success" class="h-64 flex flex-col items-center justify-center hidden">
+                                <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                                    <i class="fa fa-check text-3xl text-green-500"></i>
+                                </div>
+                                <h4 class="text-xl font-bold text-green-600 mb-2">验证成功</h4>
+                                <p class="text-gray-700 mb-1">优惠券金额: <span id="success-amount" class="font-semibold">¥50</span></p>
+                                <p class="text-gray-700 mb-4">使用条件: <span id="success-condition" class="font-semibold">满100元可用</span></p>
+                                <button id="redeem-btn" class="bg-primary text-white py-2 px-6 rounded-md hover:opacity-90 transition-all duration-300">
+                                    确认核销
+                                </button>
+                            </div>
+                            
+                            <!-- 验证失败状态 -->
+                            <div id="verify-failed" class="h-64 flex flex-col items-center justify-center hidden">
+                                <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                    <i class="fa fa-times text-3xl text-red-500"></i>
+                                </div>
+                                <h4 class="text-xl font-bold text-red-600 mb-2">验证失败</h4>
+                                <p id="failed-reason" class="text-gray-700 text-center">优惠券不存在或已过期</p>
+                            </div>
+                            
+                            <!-- 核销成功状态 -->
+                            <div id="redeem-success" class="h-64 flex flex-col items-center justify-center hidden">
+                                <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4 animate-bounce-slow">
+                                    <i class="fa fa-check text-3xl text-green-500"></i>
+                                </div>
+                                <h4 class="text-xl font-bold text-green-600 mb-2">核销成功</h4>
+                                <p class="text-gray-700 mb-4">优惠券已成功核销</p>
+                                <button id="new-verify-btn" class="bg-primary text-white py-2 px-6 rounded-md hover:opacity-90 transition-all duration-300">
+                                    验证新优惠券
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据统计模块 -->
+        <section id="stats-section" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fa fa-bar-chart text-primary mr-2"></i>
+                    数据统计
+                </h2>
+                
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-gradient-primary text-white rounded-lg p-6 shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-lg opacity-80">总发放优惠券</p>
+                                <h3 class="text-3xl font-bold mt-2" id="total-coupons">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <i class="fa fa-ticket text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-secondary text-white rounded-lg p-6 shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-lg opacity-80">已核销优惠券</p>
+                                <h3 class="text-3xl font-bold mt-2" id="used-coupons">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <i class="fa fa-check-circle text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-600 text-white rounded-lg p-6 shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-lg opacity-80">未核销优惠券</p>
+                                <h3 class="text-3xl font-bold mt-2" id="unused-coupons">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <i class="fa fa-clock-o text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-green-600 text-white rounded-lg p-6 shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-lg opacity-80">总优惠金额</p>
+                                <h3 class="text-3xl font-bold mt-2" id="total-amount">¥0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <i class="fa fa-money text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 图表区域 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 优惠券状态分布 -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">优惠券状态分布</h3>
+                        <div class="h-64">
+                            <canvas id="coupon-status-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- 每日核销趋势 -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">每日核销趋势</h3>
+                        <div class="h-64">
+                            <canvas id="daily-redeem-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部信息 -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/5d4d3dfef7b14422a44644b78a4c47d6~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=202605122237250E4A0F715107C28E631F&rrcfp=f06b921b&x-expires=1781188706&x-signature=G3tWxvi6gSWq22eO1jbiF9GiRUs%3D" alt="美食节标志" class="h-8 w-8">
+                        <h2 class="text-lg font-bold">美食节优惠券系统</h2>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">简化优惠券发放与核销流程</p>
+                </div>
+                <div class="text-center md:text-right">
+                    <p class="text-gray-400 text-sm">© 2026 美食节组委会. 保留所有权利.</p>
+                    <p class="text-gray-500 text-xs mt-1">支持电脑/手机发放优惠券，手机扫码核销</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 分享优惠券模态框 -->
+    <div id="share-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">分享优惠券</h3>
+                <button id="close-share-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <p class="text-gray-600 mb-4">选择分享方式：</p>
+                <div class="grid grid-cols-4 gap-4">
+                    <button class="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-md hover:bg-gray-100">
+                        <i class="fa fa-wechat text-2xl text-green-500 mb-2"></i>
+                        <span class="text-sm">微信</span>
+                    </button>
+                    <button class="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-md hover:bg-gray-100">
+                        <i class="fa fa-weibo text-2xl text-red-500 mb-2"></i>
+                        <span class="text-sm">微博</span>
+                    </button>
+                    <button class="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-md hover:bg-gray-100">
+                        <i class="fa fa-qq text-2xl text-blue-500 mb-2"></i>
+                        <span class="text-sm">QQ</span>
+                    </button>
+                    <button class="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-md hover:bg-gray-100">
+                        <i class="fa fa-link text-2xl text-gray-500 mb-2"></i>
+                        <span class="text-sm">复制链接</span>
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-100 p-4 rounded-md">
+                <p class="text-gray-600 text-sm mb-2">或扫描二维码分享：</p>
+                <div class="flex justify-center">
+                    <div id="share-qrcode" class="w-32 h-32"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 优惠券详情模态框 -->
+    <div id="coupon-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">优惠券详情</h3>
+                <button id="close-detail-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div id="coupon-detail-content" class="mb-6">
+                <!-- 优惠券详情将通过JavaScript动态生成 -->
+            </div>
+            <div class="flex justify-end">
+                <button id="close-detail-btn" class="bg-gray-600 text-white py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 打印优惠券模态框 -->
+    <div id="print-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">打印优惠券</h3>
+                <button id="close-print-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <label for="print-count" class="text-gray-700">打印数量：</label>
+                    <div class="flex items-center">
+                        <button id="decrease-print-count" class="w-8 h-8 bg-gray-200 rounded-l-md flex items-center justify-center">
+                            <i class="fa fa-minus"></i>
+                        </button>
+                        <input type="number" id="print-count" class="w-16 h-8 border-t border-b border-gray-300 text-center" value="1" min="1">
+                        <button id="increase-print-count" class="w-8 h-8 bg-gray-200 rounded-r-md flex items-center justify-center">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4" id="print-preview-container">
+                    <!-- 打印预览将通过JavaScript动态生成 -->
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button id="confirm-print-btn" class="bg-primary text-white py-2 px-6 rounded-md hover:opacity-90 transition-all duration-300">
+                    <i class="fa fa-print mr-2"></i>
+                    确认打印
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let coupons = JSON.parse(localStorage.getItem('foodFestivalCoupons')) || [];
+        let currentCoupon = null;
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let html5QrcodeScanner = null;
+        let selectedTemplate = 'template1';
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置默认过期日期为30天后
+            const today = new Date();
+            const expiryDate = new Date(today);
+            expiryDate.setDate(today.getDate() + 30);
+            const expiryDateString = expiryDate.toISOString().split('T')[0];
+            document.getElementById('coupon-expiry').value = expiryDateString;
+            
+            // 初始化预览
+            updatePreview();
+            
+            // 初始化事件监听
+            initEventListeners();
+            
+            // 初始化管理页面
+            updateCouponList();
+            
+            // 初始化统计页面
+            updateStatistics();
+            
+            // 检查URL参数
+            checkUrlParams();
+            
+            // 移动端优化
+            if (isMobileDevice()) {
+                // 为移动设备添加额外的样式和优化
+                const style = document.createElement('style');
+                style.textContent = `
+                    #qr-reader {
+                        height: 300px !important;
+                    }
+                    .scan-overlay {
+                        z-index: 10;
+                    }
+                    @media (max-width: 640px) {
+                        #qr-reader {
+                            height: 250px !important;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        });
+        
+        // 初始化事件监听
+        function initEventListeners() {
+            // 优惠券类型切换
+            document.querySelectorAll('input[name="coupon-type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const cashContainer = document.getElementById('cash-amount-container');
+                    const discountContainer = document.getElementById('discount-rate-container');
+                    
+                    if (this.value === 'cash') {
+                        cashContainer.classList.remove('hidden');
+                        discountContainer.classList.add('hidden');
+                    } else {
+                        cashContainer.classList.add('hidden');
+                        discountContainer.classList.remove('hidden');
+                    }
+                    
+                    updatePreview();
+                });
+            });
+            // 导航标签切换
+            document.getElementById('tab-generate').addEventListener('click', () => switchTab('generate'));
+            document.getElementById('tab-manage').addEventListener('click', () => switchTab('manage'));
+            document.getElementById('tab-verify').addEventListener('click', () => switchTab('verify'));
+            document.getElementById('tab-stats').addEventListener('click', () => switchTab('stats'));
+            
+            // 移动端菜单
+            document.getElementById('mobile-menu-button').addEventListener('click', toggleMobileMenu);
+            document.getElementById('mobile-tab-generate').addEventListener('click', () => {
+                switchTab('generate');
+                toggleMobileMenu();
+            });
+            document.getElementById('mobile-tab-manage').addEventListener('click', () => {
+                switchTab('manage');
+                toggleMobileMenu();
+            });
+            document.getElementById('mobile-tab-verify').addEventListener('click', () => {
+                switchTab('verify');
+                toggleMobileMenu();
+            });
+            document.getElementById('mobile-tab-stats').addEventListener('click', () => {
+                switchTab('stats');
+                toggleMobileMenu();
+            });
+            
+            // 表单输入监听
+            document.getElementById('coupon-amount').addEventListener('input', updatePreview);
+            document.getElementById('coupon-condition').addEventListener('input', updatePreview);
+            document.getElementById('coupon-expiry').addEventListener('input', updatePreview);
+            document.getElementById('coupon-description').addEventListener('input', updatePreview);
+            
+            // 模板选择
+            document.querySelectorAll('.template-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.template-option').forEach(opt => {
+                        opt.querySelector('div').classList.remove('border-primary');
+                        opt.querySelector('div').classList.add('border-gray-300');
+                    });
+                    this.querySelector('div').classList.remove('border-gray-300');
+                    this.querySelector('div').classList.add('border-primary');
+                    selectedTemplate = this.dataset.template;
+                    
+                    document.querySelectorAll('.coupon-template').forEach(template => {
+                        template.classList.add('hidden');
+                    });
+                    document.getElementById(`${selectedTemplate}-preview`).classList.remove('hidden');
+                    
+                    updatePreview();
+                });
+            });
+            
+            // 生成优惠券按钮
+            document.getElementById('generate-coupon-btn').addEventListener('click', generateCoupon);
+            
+            // 下载优惠券按钮
+            document.getElementById('download-coupon-btn').addEventListener('click', downloadCoupon);
+            
+            // 分享优惠券按钮
+            document.getElementById('share-coupon-btn').addEventListener('click', shareCoupon);
+            document.getElementById('close-share-modal').addEventListener('click', () => {
+                document.getElementById('share-modal').classList.add('hidden');
+            });
+            
+            // 打印优惠券按钮
+            document.getElementById('print-coupon-btn').addEventListener('click', showPrintModal);
+            document.getElementById('close-print-modal').addEventListener('click', () => {
+                document.getElementById('print-modal').classList.add('hidden');
+            });
+            document.getElementById('decrease-print-count').addEventListener('click', () => {
+                const countInput = document.getElementById('print-count');
+                if (parseInt(countInput.value) > 1) {
+                    countInput.value = parseInt(countInput.value) - 1;
+                    updatePrintPreview();
+                }
+            });
+            document.getElementById('increase-print-count').addEventListener('click', () => {
+                const countInput = document.getElementById('print-count');
+                countInput.value = parseInt(countInput.value) + 1;
+                updatePrintPreview();
+            });
+            document.getElementById('print-count').addEventListener('input', updatePrintPreview);
+            document.getElementById('confirm-print-btn').addEventListener('click', printCoupons);
+            
+            // 筛选按钮
+            document.getElementById('filter-all').addEventListener('click', () => setFilter('all'));
+            document.getElementById('filter-unused').addEventListener('click', () => setFilter('unused'));
+            document.getElementById('filter-used').addEventListener('click', () => setFilter('used'));
+            document.getElementById('filter-expired').addEventListener('click', () => setFilter('expired'));
+            
+            // 搜索框
+            document.getElementById('search-coupon').addEventListener('input', function() {
+                searchQuery = this.value.toLowerCase();
+                currentPage = 1;
+                updateCouponList();
+            });
+            
+            // 分页按钮
+            document.getElementById('prev-page').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateCouponList();
+                }
+            });
+            document.getElementById('next-page').addEventListener('click', () => {
+                const filteredCoupons = getFilteredCoupons();
+                const totalPages = Math.ceil(filteredCoupons.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateCouponList();
+                }
+            });
+            
+            // 核销相关按钮
+            document.getElementById('start-scan-btn').addEventListener('click', startScan);
+            document.getElementById('stop-scan-btn').addEventListener('click', stopScan);
+            document.getElementById('verify-manual-btn').addEventListener('click', verifyManualCode);
+            document.getElementById('redeem-btn').addEventListener('click', redeemCoupon);
+            document.getElementById('new-verify-btn').addEventListener('click', resetVerify);
+            
+            // 摄像头权限重试按钮
+            const retryBtn = document.getElementById('retry-permission-btn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', function() {
+                    document.getElementById('camera-permission-denied').classList.add('hidden');
+                    document.getElementById('qr-reader').classList.remove('hidden');
+                    document.getElementById('qr-reader-placeholder').classList.remove('hidden');
+                    startScan();
+                });
+            }
+            
+            // 优惠券详情模态框
+            document.getElementById('close-detail-modal').addEventListener('click', () => {
+                document.getElementById('coupon-detail-modal').classList.add('hidden');
+            });
+            document.getElementById('close-detail-btn').addEventListener('click', () => {
+                document.getElementById('coupon-detail-modal').classList.add('hidden');
+            });
+        }
+        
+        // 切换标签页
+        function switchTab(tabName) {
+            // 隐藏所有内容区域
+            document.getElementById('generate-section').classList.add('hidden');
+            document.getElementById('manage-section').classList.add('hidden');
+            document.getElementById('verify-section').classList.add('hidden');
+            document.getElementById('stats-section').classList.add('hidden');
+            
+            // 显示选中的内容区域
+            document.getElementById(`${tabName}-section`).classList.remove('hidden');
+            
+            // 更新导航标签样式
+            document.querySelectorAll('nav button').forEach(button => {
+                button.classList.remove('bg-white', 'bg-opacity-20', 'font-medium');
+                button.classList.add('hover:bg-white', 'hover:bg-opacity-20');
+            });
+            
+            // 高亮当前标签
+            document.getElementById(`tab-${tabName}`).classList.add('bg-white', 'bg-opacity-20', 'font-medium');
+            document.getElementById(`tab-${tabName}`).classList.remove('hover:bg-white', 'hover:bg-opacity-20');
+            document.getElementById(`mobile-tab-${tabName}`).classList.add('bg-white', 'bg-opacity-20', 'font-medium');
+            document.getElementById(`mobile-tab-${tabName}`).classList.remove('hover:bg-white', 'hover:bg-opacity-20');
+            
+            // 如果切换到统计页面，更新统计数据
+            if (tabName === 'stats') {
+                updateStatistics();
+            }
+            
+            // 如果切换到核销页面，确保扫描区域已重置
+            if (tabName === 'verify') {
+                resetVerify();
+            }
+        }
+        
+        // 切换移动端菜单
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        }
+        
+        // 更新预览
+        function updatePreview() {
+            const couponType = document.querySelector('input[name="coupon-type"]:checked').value;
+            const amount = document.getElementById('coupon-amount').value || '0';
+            const discount = document.getElementById('coupon-discount').value || '8.5';
+            const condition = document.getElementById('coupon-condition').value || '0';
+            const expiry = document.getElementById('coupon-expiry').value || '2026-12-31';
+            const description = document.getElementById('coupon-description').value || '全场通用';
+            
+            // 更新所有模板的预览
+            for (let i = 1; i <= 3; i++) {
+                const previewAmount = document.getElementById(`preview-amount${i > 1 ? '-' + i : ''}`);
+                const previewCondition = document.getElementById(`preview-condition${i > 1 ? '-' + i : ''}`);
+                const previewExpiry = document.getElementById(`preview-expiry${i > 1 ? '-' + i : ''}`);
+                const previewDescription = document.getElementById(`preview-description${i > 1 ? '-' + i : ''}`);
+                const previewValueContainer = document.getElementById(`preview-value-container${i > 1 ? '-' + i : ''}`);
+                
+                if (previewCondition) previewCondition.textContent = condition;
+                if (previewExpiry) previewExpiry.textContent = expiry;
+                if (previewDescription) previewDescription.textContent = description;
+                
+                // 根据优惠券类型显示不同的值
+                if (couponType === 'cash') {
+                    if (previewValueContainer) {
+                        previewValueContainer.innerHTML = `¥<span id="preview-amount${i > 1 ? '-' + i : ''}">${amount}</span>`;
+                    }
+                } else {
+                    if (previewValueContainer) {
+                        previewValueContainer.innerHTML = `<span id="preview-discount${i > 1 ? '-' + i : ''}">${discount}</span>折`;
+                    }
+                }
+            }
+        }
+        
+        // 生成随机券码
+        function generateCouponCode() {
+            const prefix = 'FOOD';
+            const date = new Date().toISOString().slice(0, 4);
+            const random = Math.floor(1000 + Math.random() * 9000);
+            return `${prefix}${date}${random}`;
+        }
+        
+        // 生成优惠券
+        function generateCoupon() {
+            const couponType = document.querySelector('input[name="coupon-type"]:checked').value;
+            const amount = document.getElementById('coupon-amount').value;
+            const discount = document.getElementById('coupon-discount').value;
+            const condition = document.getElementById('coupon-condition').value;
+            const expiry = document.getElementById('coupon-expiry').value;
+            const description = document.getElementById('coupon-description').value;
+            
+            if (!condition || !expiry) {
+                alert('请填写完整的优惠券信息');
+                return;
+            }
+            
+            if (couponType === 'cash' && !amount) {
+                alert('请填写优惠金额');
+                return;
+            }
+            
+            if (couponType === 'discount' && !discount) {
+                alert('请填写折扣比例');
+                return;
+            }
+            
+            const code = generateCouponCode();
+            const id = Date.now().toString();
+            
+            const coupon = {
+                id,
+                code,
+                type: couponType,
+                amount: couponType === 'cash' ? parseInt(amount) : null,
+                discount: couponType === 'discount' ? parseFloat(discount) : null,
+                condition: parseInt(condition),
+                expiryDate: expiry,
+                description,
+                status: 'unused',
+                createdAt: new Date().toISOString(),
+                usedAt: null,
+                template: selectedTemplate,
+                // 添加分享标识，用于电脑端生成后手机端扫码
+                shareId: `SHARE-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+            };
+            
+            // 添加到优惠券列表
+            coupons.push(coupon);
+            localStorage.setItem('foodFestivalCoupons', JSON.stringify(coupons));
+            
+            // 更新当前优惠券
+            currentCoupon = coupon;
+            
+            // 更新预览中的券码
+            for (let i = 1; i <= 3; i++) {
+                const previewCode = document.getElementById(`preview-code${i > 1 ? '-' + i : ''}`);
+                if (previewCode) previewCode.textContent = code;
+            }
+            
+            // 生成二维码
+            generateQRCode(coupon);
+            
+            // 显示操作按钮
+            document.getElementById('coupon-actions').classList.remove('hidden');
+            
+            // 显示成功提示
+            showToast('优惠券生成成功！');
+            
+            // 更新管理页面和统计页面
+            updateCouponList();
+            updateStatistics();
+        }
+        
+        // 生成二维码
+        function generateQRCode(coupon) {
+            const couponData = JSON.stringify({
+                id: coupon.id,
+                code: coupon.code,
+                type: coupon.type,
+                amount: coupon.amount,
+                discount: coupon.discount,
+                condition: coupon.condition,
+                shareId: coupon.shareId
+            });
+            
+            // 为每个模板生成二维码
+            for (let i = 1; i <= 3; i++) {
+                const qrcodeElement = document.getElementById(`qrcode${i > 1 ? '-' + i : ''}`);
+                if (qrcodeElement) {
+                    qrcodeElement.innerHTML = '';
+                    new QRCode(qrcodeElement, {
+                        text: couponData,
+                        width: 96,
+                        height: 96,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            }
+        }
+        
+        // 下载优惠券
+        function downloadCoupon() {
+            if (!currentCoupon) {
+                alert('请先生成优惠券');
+                return;
+            }
+            
+            // 创建一个临时的canvas元素
+            const canvas = document.createElement('canvas');
+            canvas.width = 600;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            
+            // 根据选择的模板绘制不同的背景
+            if (currentCoupon.template === 'template1') {
+                // 绘制红色渐变背景
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#FF5722');
+                gradient.addColorStop(1, '#FF9800');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 添加装饰元素
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.arc(50, 50, 30, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(canvas.width - 50, canvas.height - 50, 40, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (currentCoupon.template === 'template2') {
+                // 绘制蓝色渐变背景
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#673AB7');
+                gradient.addColorStop(1, '#3F51B5');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 添加装饰元素
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.arc(canvas.width - 50, 50, 30, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(50, canvas.height - 50, 40, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // 绘制绿色渐变背景
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#4CAF50');
+                gradient.addColorStop(1, '#8BC34A');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 添加装饰元素
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.arc(canvas.width / 4, canvas.height / 4, 25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(canvas.width * 3/4, canvas.height * 3/4, 35, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 绘制优惠券内容
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            
+            // 标题
+            ctx.font = 'bold 36px Arial';
+            ctx.fillText('美食节优惠券', canvas.width / 2, 60);
+            
+            // 优惠信息
+            ctx.font = 'bold 60px Arial';
+            if (currentCoupon.type === 'cash') {
+                ctx.fillText(`¥${currentCoupon.amount}`, canvas.width / 2, 140);
+            } else {
+                ctx.fillText(`${currentCoupon.discount}折`, canvas.width / 2, 140);
+            }
+            
+            // 使用条件
+            ctx.font = '24px Arial';
+            ctx.fillText(`满${currentCoupon.condition}元可用`, canvas.width / 2, 180);
+            
+            // 描述
+            ctx.font = '20px Arial';
+            ctx.fillText(currentCoupon.description, canvas.width / 2, 210);
+            
+            // 有效期
+            ctx.font = '16px Arial';
+            ctx.fillText(`有效期至: ${currentCoupon.expiryDate}`, canvas.width / 2, 240);
+            
+            // 券码
+            ctx.font = 'bold 18px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(currentCoupon.code, 30, canvas.height - 30);
+            
+            // 获取二维码数据
+            const qrcodeElement = document.getElementById(`qrcode${currentCoupon.template === 'template1' ? '' : '-' + currentCoupon.template.slice(-1)}`);
+            const qrcodeImage = qrcodeElement.querySelector('img');
+            
+            // 绘制二维码
+            const qrSize = 100;
+            ctx.drawImage(qrcodeImage, canvas.width - qrSize - 30, canvas.height - qrSize - 30, qrSize, qrSize);
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.download = `优惠券_${currentCoupon.code}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // 分享优惠券
+        function shareCoupon() {
+            if (!currentCoupon) {
+                alert('请先生成优惠券');
+                return;
+            }
+            
+            // 显示分享模态框
+            document.getElementById('share-modal').classList.remove('hidden');
+            
+            // 生成分享二维码
+            const shareQrcode = document.getElementById('share-qrcode');
+            shareQrcode.innerHTML = '';
+            
+            // 创建分享链接，包含优惠券ID和分享标识
+            const shareLink = `${window.location.origin}${window.location.pathname}?share=${currentCoupon.shareId}`;
+            
+            new QRCode(shareQrcode, {
+                text: shareLink,
+                width: 128,
+                height: 128,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            // 更新复制链接按钮的功能
+            const copyLinkBtn = document.querySelector('#share-modal button:has(.fa-link)');
+            copyLinkBtn.onclick = function() {
+                navigator.clipboard.writeText(shareLink).then(() => {
+                    showToast('链接已复制到剪贴板');
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制链接');
+                });
+            };
+            
+            // 更新社交媒体分享按钮
+            const wechatBtn = document.querySelector('#share-modal button:has(.fa-wechat)');
+            wechatBtn.onclick = function() {
+                showToast('请使用微信扫描二维码');
+            };
+            
+            const weiboBtn = document.querySelector('#share-modal button:has(.fa-weibo)');
+            weiboBtn.onclick = function() {
+                const couponInfo = currentCoupon.type === 'cash' 
+                    ? `¥${currentCoupon.amount}元优惠券` 
+                    : `${currentCoupon.discount}折优惠券`;
+                const weiboShareUrl = `https://service.weibo.com/share/share.php?url=${encodeURIComponent(shareLink)}&title=【美食节${couponInfo}】满${currentCoupon.condition}元可用，快来领取吧！`;
+                window.open(weiboShareUrl, '_blank');
+            };
+            
+            const qqBtn = document.querySelector('#share-modal button:has(.fa-qq)');
+            qqBtn.onclick = function() {
+                const couponInfo = currentCoupon.type === 'cash' 
+                    ? `¥${currentCoupon.amount}元优惠券` 
+                    : `${currentCoupon.discount}折优惠券`;
+                const qqShareUrl = `https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(shareLink)}&title=美食节${couponInfo}&summary=满${currentCoupon.condition}元可用，快来领取吧！`;
+                window.open(qqShareUrl, '_blank');
+            };
+        }
+        
+        // 显示打印模态框
+        function showPrintModal() {
+            if (!currentCoupon) {
+                alert('请先生成优惠券');
+                return;
+            }
+            
+            // 显示打印模态框
+            document.getElementById('print-modal').classList.remove('hidden');
+            
+            // 更新打印预览
+            updatePrintPreview();
+        }
+        
+        // 更新打印预览
+        function updatePrintPreview() {
+            const count = parseInt(document.getElementById('print-count').value) || 1;
+            const container = document.getElementById('print-preview-container');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < count; i++) {
+                const preview = document.createElement('div');
+                preview.className = 'border border-gray-200 rounded-md p-2';
+                
+                // 克隆当前选中的优惠券模板
+                const templatePreview = document.getElementById(`${currentCoupon.template}-preview`).cloneNode(true);
+                templatePreview.classList.remove('hidden');
+                
+                preview.appendChild(templatePreview);
+                container.appendChild(preview);
+            }
+        }
+        
+        // 打印优惠券
+        function printCoupons() {
+            if (!currentCoupon) {
+                alert('请先生成优惠券');
+                return;
+            }
+            
+            const count = parseInt(document.getElementById('print-count').value) || 1;
+            
+            // 创建一个新窗口用于打印
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>打印优惠券</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 0;
+                            padding: 20px;
+                            background-color: #f5f5f5;
+                        }
+                        .coupon-container {
+                            display: flex;
+                            flex-wrap: wrap;
+                            justify-content: space-between;
+                        }
+                        .coupon {
+                            width: 48%;
+                            margin-bottom: 20px;
+                            page-break-inside: avoid;
+                        }
+                        @media print {
+                            body {
+                                background-color: white;
+                            }
+                            .no-print {
+                                display: none;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+                        <h2>即将打印 ${count} 张优惠券</h2>
+                        <p>点击"打印"按钮开始打印</p>
+                        <button onclick="window.print()">打印</button>
+                        <button onclick="window.close()">取消</button>
+                    </div>
+                    <div class="coupon-container">
+            `);
+            
+            // 添加优惠券
+            for (let i = 0; i < count; i++) {
+                // 获取当前优惠券的HTML
+                const couponElement = document.getElementById(`${currentCoupon.template}-preview`);
+                const couponHTML = couponElement.outerHTML;
+                
+                printWindow.document.write(`
+                    <div class="coupon">
+                        ${couponHTML}
+                    </div>
+                `);
+            }
+            
+            printWindow.document.write(`
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            
+            // 延迟打印，确保内容已加载
+            setTimeout(() => {
+                printWindow.print();
+                document.getElementById('print-modal').classList.add('hidden');
+            }, 500);
+        }
+        
+        // 设置筛选条件
+        function setFilter(filter) {
+            currentFilter = filter;
+            currentPage = 1;
+            
+            // 更新筛选按钮样式
+            document.getElementById('filter-all').classList.remove('bg-primary', 'text-white');
+            document.getElementById('filter-all').classList.add('bg-gray-200', 'text-gray-700');
+            document.getElementById('filter-unused').classList.remove('bg-primary', 'text-white');
+            document.getElementById('filter-unused').classList.add('bg-gray-200', 'text-gray-700');
+            document.getElementById('filter-used').classList.remove('bg-primary', 'text-white');
+            document.getElementById('filter-used').classList.add('bg-gray-200', 'text-gray-700');
+            document.getElementById('filter-expired').classList.remove('bg-primary', 'text-white');
+            document.getElementById('filter-expired').classList.add('bg-gray-200', 'text-gray-700');
+            
+            document.getElementById(`filter-${filter}`).classList.remove('bg-gray-200', 'text-gray-700');
+            document.getElementById(`filter-${filter}`).classList.add('bg-primary', 'text-white');
+            
+            // 更新优惠券列表
+            updateCouponList();
+        }
+        
+        // 获取筛选后的优惠券
+        function getFilteredCoupons() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            return coupons.filter(coupon => {
+                // 状态筛选
+                if (currentFilter === 'unused' && coupon.status !== 'unused') return false;
+                if (currentFilter === 'used' && coupon.status !== 'used') return false;
+                if (currentFilter === 'expired' && (coupon.status !== 'expired' && coupon.expiryDate >= today)) return false;
+                
+                // 搜索筛选
+                if (searchQuery) {
+                    const matchesCode = coupon.code.toLowerCase().includes(searchQuery);
+                    const matchesAmount = coupon.amount.toString().includes(searchQuery);
+                    if (!matchesCode && !matchesAmount) return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        // 更新优惠券列表
+        function updateCouponList() {
+            const filteredCoupons = getFilteredCoupons();
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedCoupons = filteredCoupons.slice(startIndex, endIndex);
+            
+            const couponList = document.getElementById('coupon-list');
+            couponList.innerHTML = '';
+            
+            if (paginatedCoupons.length === 0) {
+                couponList.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="6" class="py-8 text-gray-500">暂无优惠券数据</td>
+                    </tr>
+                `;
+            } else {
+                paginatedCoupons.forEach(coupon => {
+                    const today = new Date().toISOString().split('T')[0];
+                    let statusClass = '';
+                    let statusText = '';
+                    
+                    if (coupon.status === 'used') {
+                        statusClass = 'bg-green-100 text-green-800';
+                        statusText = '已使用';
+                    } else if (coupon.status === 'expired' || coupon.expiryDate < today) {
+                        statusClass = 'bg-red-100 text-red-800';
+                        statusText = '已过期';
+                    } else {
+                        statusClass = 'bg-blue-100 text-blue-800';
+                        statusText = '未使用';
+                    }
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="py-3 px-4 border-b border-gray-200">
+                            <div class="font-medium text-gray-900">${coupon.code}</div>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200">
+                            <div class="text-gray-900">¥${coupon.amount}</div>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200">
+                            <div class="text-gray-900">满${coupon.condition}元可用</div>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200">
+                            <div class="text-gray-900">${coupon.expiryDate}</div>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200">
+                            <span class="px-2 py-1 text-xs rounded-full ${statusClass}">${statusText}</span>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200">
+                            <button class="view-coupon-btn text-primary hover:text-primary-dark mr-2" data-id="${coupon.id}">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                            ${coupon.status === 'unused' && coupon.expiryDate >= today ? `
+                                <button class="delete-coupon-btn text-red-500 hover:text-red-700" data-id="${coupon.id}">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    `;
+                    
+                    couponList.appendChild(row);
+                });
+                
+                // 添加查看优惠券详情事件
+                document.querySelectorAll('.view-coupon-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const couponId = this.dataset.id;
+                        showCouponDetail(couponId);
+                    });
+                });
+                
+                // 添加删除优惠券事件
+                document.querySelectorAll('.delete-coupon-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const couponId = this.dataset.id;
+                        if (confirm('确定要删除这张优惠券吗？')) {
+                            deleteCoupon(couponId);
+                        }
+                    });
+                });
+            }
+            
+            // 更新分页信息
+            document.getElementById('showing-records').textContent = paginatedCoupons.length;
+            document.getElementById('total-records').textContent = filteredCoupons.length;
+            
+            // 更新分页按钮状态
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = endIndex >= filteredCoupons.length;
+        }
+        
+        // 显示优惠券详情
+        function showCouponDetail(couponId) {
+            const coupon = coupons.find(c => c.id === couponId);
+            if (!coupon) return;
+            
+            const detailContent = document.getElementById('coupon-detail-content');
+            
+            // 创建优惠券详情HTML
+            let statusClass = '';
+            let statusText = '';
+            
+            if (coupon.status === 'used') {
+                statusClass = 'bg-green-100 text-green-800';
+                statusText = '已使用';
+            } else if (coupon.status === 'expired' || coupon.expiryDate < new Date().toISOString().split('T')[0]) {
+                statusClass = 'bg-red-100 text-red-800';
+                statusText = '已过期';
+            } else {
+                statusClass = 'bg-blue-100 text-blue-800';
+                statusText = '未使用';
+            }
+            
+            // 优惠信息显示
+            let discountInfo = '';
+            if (coupon.type === 'cash') {
+                discountInfo = `<span class="text-4xl font-extrabold text-shadow">¥${coupon.amount}</span>`;
+            } else {
+                discountInfo = `<span class="text-4xl font-extrabold text-shadow">${coupon.discount}折</span>`;
+            }
+            
+            detailContent.innerHTML = `
+                <div class="mb-6">
+                    <div class="relative w-full h-48 bg-gradient-primary rounded-lg overflow-hidden shadow-lg">
+                        <!-- 背景装饰 -->
+                        <div class="absolute top-0 left-0 w-full h-full opacity-10">
+                            <div class="absolute top-4 left-4 w-12 h-12 bg-white rounded-full"></div>
+                            <div class="absolute bottom-4 right-4 w-16 h-16 bg-white rounded-full"></div>
+                        </div>
+                        
+                        <!-- 优惠券内容 -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4">
+                            <h3 class="text-2xl font-bold mb-2 text-shadow">美食节优惠券</h3>
+                            <div class="flex items-baseline mb-2">
+                                ${discountInfo}
+                                <span class="ml-2 text-sm">满${coupon.condition}元可用</span>
+                            </div>
+                            <p class="text-center mb-2 text-sm">${coupon.description}</p>
+                            <p class="text-xs">有效期至: ${coupon.expiryDate}</p>
+                            
+                            <!-- 二维码位置 -->
+                            <div class="absolute bottom-2 right-2 bg-white p-1 rounded-md">
+                                <div id="detail-qrcode" class="w-16 h-16"></div>
+                            </div>
+                            
+                            <!-- 券码位置 -->
+                            <div class="absolute bottom-2 left-2 bg-white bg-opacity-90 px-2 py-1 rounded-md">
+                                <span class="text-primary font-mono font-bold text-xs">${coupon.code}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">券码：</span>
+                        <span class="font-mono font-medium">${coupon.code}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">优惠券类型：</span>
+                        <span class="font-medium">${coupon.type === 'cash' ? '满减券' : '折扣券'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">优惠信息：</span>
+                        <span class="font-medium">${coupon.type === 'cash' ? `¥${coupon.amount}` : `${coupon.discount}折`}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">使用条件：</span>
+                        <span class="font-medium">满${coupon.condition}元可用</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">优惠描述：</span>
+                        <span class="font-medium">${coupon.description}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">有效期至：</span>
+                        <span class="font-medium">${coupon.expiryDate}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">创建时间：</span>
+                        <span class="font-medium">${new Date(coupon.createdAt).toLocaleString()}</span>
+                    </div>
+                    ${coupon.usedAt ? `
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">使用时间：</span>
+                            <span class="font-medium">${new Date(coupon.usedAt).toLocaleString()}</span>
+                        </div>
+                    ` : ''}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">状态：</span>
+                        <span class="px-2 py-1 text-xs rounded-full ${statusClass}">${statusText}</span>
+                    </div>
+                </div>
+            `;
+            
+            // 生成二维码
+            const detailQrcode = document.getElementById('detail-qrcode');
+            const couponData = JSON.stringify({
+                id: coupon.id,
+                code: coupon.code,
+                type: coupon.type,
+                amount: coupon.amount,
+                discount: coupon.discount,
+                condition: coupon.condition
+            });
+            
+            new QRCode(detailQrcode, {
+                text: couponData,
+                width: 64,
+                height: 64,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            // 显示详情模态框
+            document.getElementById('coupon-detail-modal').classList.remove('hidden');
+        }
+        
+        // 删除优惠券
+        function deleteCoupon(couponId) {
+            coupons = coupons.filter(c => c.id !== couponId);
+            localStorage.setItem('foodFestivalCoupons', JSON.stringify(coupons));
+            
+            // 更新列表
+            updateCouponList();
+            
+            // 更新统计
+            updateStatistics();
+            
+            // 显示提示
+            showToast('优惠券已删除');
+        }
+        
+        // 开始扫描
+        async function startScan() {
+            // 检查摄像头支持
+            if (!checkCameraSupport()) {
+                document.getElementById('qr-reader').classList.add('hidden');
+                document.getElementById('camera-not-supported').classList.remove('hidden');
+                document.getElementById('start-scan-btn').classList.add('hidden');
+                return;
+            }
+            
+            // 隐藏占位符
+            document.getElementById('qr-reader-placeholder').classList.add('hidden');
+            
+            try {
+                // 先请求摄像头权限
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                // 释放流
+                stream.getTracks().forEach(track => track.stop());
+                
+                // 显示扫描覆盖层
+                document.getElementById('scan-overlay').classList.remove('hidden');
+                
+                // 创建扫描器实例
+                const qrboxSize = isMobileDevice() ? 200 : 250;
+                html5QrcodeScanner = new Html5QrcodeScanner(
+                    "qr-reader",
+                    { 
+                        fps: 15, // 提高帧率以提高扫描速度
+                        qrbox: { width: qrboxSize, height: qrboxSize },
+                        aspectRatio: 1.0, // 保持正方形扫描区域
+                        disableFlip: false
+                    },
+                    false
+                );
+                
+                // 开始扫描
+                html5QrcodeScanner.render(onScanSuccess, onScanError);
+                
+                // 切换按钮显示
+                document.getElementById('start-scan-btn').classList.add('hidden');
+                document.getElementById('stop-scan-btn').classList.remove('hidden');
+                
+                // 如果是移动设备，添加额外的提示
+                if (isMobileDevice()) {
+                    showToast('请将二维码对准扫描框');
+                }
+            } catch (error) {
+                console.error('摄像头访问错误:', error);
+                
+                // 显示权限被拒绝提示
+                document.getElementById('qr-reader-placeholder').classList.remove('hidden');
+                document.getElementById('camera-permission-denied').classList.remove('hidden');
+                document.getElementById('qr-reader').classList.add('hidden');
+            }
+        }
+        
+        // 扫描成功回调
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log('扫描成功:', decodedText);
+            
+            // 停止扫描
+            stopScan();
+            
+            // 显示验证中状态
+            document.getElementById('verify-empty').classList.add('hidden');
+            document.getElementById('verify-loading').classList.remove('hidden');
+            
+            try {
+                // 尝试解析二维码数据
+                let couponData;
+                try {
+                    couponData = JSON.parse(decodedText);
+                } catch (parseError) {
+                    // 如果解析失败，可能是直接的券码或分享ID
+                    couponData = { code: decodedText };
+                }
+                
+                // 延迟验证，模拟网络请求
+                setTimeout(() => {
+                    verifyCoupon(couponData.id || couponData.code || couponData.shareId || decodedText);
+                }, 1000);
+            } catch (error) {
+                console.error('验证处理错误:', error);
+                // 解析失败，显示错误
+                document.getElementById('verify-loading').classList.add('hidden');
+                document.getElementById('verify-failed').classList.remove('hidden');
+                document.getElementById('failed-reason').textContent = '无效的优惠券二维码';
+            }
+        }
+        
+        // 扫描错误回调
+        function onScanError(errorMessage) {
+            // 扫描错误不需要特殊处理，继续扫描
+            // 只记录关键错误，避免控制台过多日志
+            if (errorMessage && errorMessage.includes('NotFoundError')) {
+                // 这是正常的未找到二维码的错误，不需要记录
+                return;
+            }
+            console.log('扫描错误:', errorMessage);
+        }
+        
+        // 停止扫描
+        function stopScan() {
+            if (html5QrcodeScanner) {
+                try {
+                    html5QrcodeScanner.clear();
+                } catch (error) {
+                    console.error('清除扫描器错误:', error);
+                }
+                html5QrcodeScanner = null;
+            }
+            
+            // 隐藏扫描覆盖层
+            document.getElementById('scan-overlay').classList.add('hidden');
+            
+            // 恢复初始状态
+            document.getElementById('qr-reader').classList.remove('hidden');
+            document.getElementById('camera-permission-denied').classList.add('hidden');
+            
+            // 确保占位符存在
+            const placeholder = document.getElementById('qr-reader-placeholder');
+            if (!placeholder) {
+                document.getElementById('qr-reader').innerHTML = `
+                    <div id="qr-reader-placeholder" class="text-center">
+                        <i class="fa fa-camera text-5xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">点击下方按钮开始扫描</p>
+                        <p class="text-gray-400 text-sm mt-2">请确保已授予摄像头访问权限</p>
+                    </div>
+                `;
+            } else {
+                placeholder.classList.remove('hidden');
+            }
+            
+            // 切换按钮显示
+            document.getElementById('start-scan-btn').classList.remove('hidden');
+            document.getElementById('stop-scan-btn').classList.add('hidden');
+        }
+        
+        // 手动输入券码验证
+        function verifyManualCode() {
+            const codeInput = document.getElementById('manual-code-input');
+            const code = codeInput.value.trim();
+            
+            if (!code) {
+                alert('请输入优惠券码');
+                return;
+            }
+            
+            // 显示验证中状态
+            document.getElementById('verify-empty').classList.add('hidden');
+            document.getElementById('verify-loading').classList.remove('hidden');
+            
+            // 延迟验证，模拟网络请求
+            setTimeout(() => {
+                verifyCoupon(code);
+            }, 1000);
+        }
+        
+        // 验证优惠券
+        function verifyCoupon(identifier) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 查找优惠券
+            const coupon = coupons.find(c => c.id === identifier || c.code === identifier || c.shareId === identifier);
+            
+            // 隐藏验证中状态
+            document.getElementById('verify-loading').classList.add('hidden');
+            
+            if (!coupon) {
+                // 优惠券不存在
+                document.getElementById('verify-failed').classList.remove('hidden');
+                document.getElementById('failed-reason').textContent = '优惠券不存在';
+            } else if (coupon.status === 'used') {
+                // 优惠券已使用
+                document.getElementById('verify-failed').classList.remove('hidden');
+                document.getElementById('failed-reason').textContent = '优惠券已使用';
+            } else if (coupon.expiryDate < today) {
+                // 优惠券已过期
+                document.getElementById('verify-failed').classList.remove('hidden');
+                document.getElementById('failed-reason').textContent = '优惠券已过期';
+            } else {
+                // 优惠券有效
+                document.getElementById('verify-success').classList.remove('hidden');
+                
+                // 根据优惠券类型显示不同的信息
+                if (coupon.type === 'cash') {
+                    document.getElementById('success-amount').textContent = `¥${coupon.amount}`;
+                } else {
+                    document.getElementById('success-amount').textContent = `${coupon.discount}折`;
+                }
+                
+                document.getElementById('success-condition').textContent = `满${coupon.condition}元可用`;
+                
+                // 保存当前验证的优惠券
+                currentCoupon = coupon;
+            }
+        }
+        
+        // 核销优惠券
+        function redeemCoupon() {
+            if (!currentCoupon) return;
+            
+            // 更新优惠券状态
+            currentCoupon.status = 'used';
+            currentCoupon.usedAt = new Date().toISOString();
+            
+            // 保存到本地存储
+            localStorage.setItem('foodFestivalCoupons', JSON.stringify(coupons));
+            
+            // 隐藏验证成功状态，显示核销成功状态
+            document.getElementById('verify-success').classList.add('hidden');
+            document.getElementById('redeem-success').classList.remove('hidden');
+            
+            // 更新管理页面和统计页面
+            updateCouponList();
+            updateStatistics();
+        }
+        
+        // 重置验证状态
+        function resetVerify() {
+            // 隐藏所有状态
+            document.getElementById('verify-empty').classList.remove('hidden');
+            document.getElementById('verify-loading').classList.add('hidden');
+            document.getElementById('verify-success').classList.add('hidden');
+            document.getElementById('verify-failed').classList.add('hidden');
+            document.getElementById('redeem-success').classList.add('hidden');
+            
+            // 清空输入框
+            document.getElementById('manual-code-input').value = '';
+            
+            // 清空当前优惠券
+            currentCoupon = null;
+        }
+        
+        // 更新统计数据
+        function updateStatistics() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 计算各种状态的优惠券数量
+            const totalCoupons = coupons.length;
+            const usedCoupons = coupons.filter(c => c.status === 'used').length;
+            const expiredCoupons = coupons.filter(c => c.expiryDate < today).length;
+            const unusedCoupons = totalCoupons - usedCoupons - expiredCoupons;
+            
+            // 计算总优惠金额
+            const totalAmount = coupons.reduce((sum, coupon) => sum + coupon.amount, 0);
+            
+            // 更新统计卡片
+            document.getElementById('total-coupons').textContent = totalCoupons;
+            document.getElementById('used-coupons').textContent = usedCoupons;
+            document.getElementById('unused-coupons').textContent = unusedCoupons;
+            document.getElementById('total-amount').textContent = `¥${totalAmount}`;
+            
+            // 更新状态分布图表
+            updateStatusChart(unusedCoupons, usedCoupons, expiredCoupons);
+            
+            // 更新每日核销趋势图表
+            updateDailyRedeemChart();
+        }
+        
+        // 更新状态分布图表
+        function updateStatusChart(unused, used, expired) {
+            const ctx = document.getElementById('coupon-status-chart').getContext('2d');
+            
+            // 销毁旧图表
+            if (window.statusChart) {
+                window.statusChart.destroy();
+            }
+            
+            // 创建新图表
+            window.statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['未使用', '已使用', '已过期'],
+                    datasets: [{
+                        data: [unused, used, expired],
+                        backgroundColor: [
+                            '#3B82F6', // 蓝色
+                            '#10B981', // 绿色
+                            '#EF4444'  // 红色
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新每日核销趋势图表
+        function updateDailyRedeemChart() {
+            const ctx = document.getElementById('daily-redeem-chart').getContext('2d');
+            
+            // 获取过去7天的日期
+            const dates = [];
+            const data = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateString = date.toISOString().split('T')[0];
+                dates.push(dateString);
+                
+                // 计算当天核销的优惠券数量
+                const count = coupons.filter(c => {
+                    return c.status === 'used' && c.usedAt && c.usedAt.startsWith(dateString);
+                }).length;
+                
+                data.push(count);
+            }
+            
+            // 销毁旧图表
+            if (window.dailyChart) {
+                window.dailyChart.destroy();
+            }
+            
+            // 创建新图表
+            window.dailyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: '每日核销数量',
+                        data: data,
+                        backgroundColor: '#FF5722',
+                        borderWidth: 0,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 显示提示消息
+        function showToast(message) {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-md shadow-lg z-50 animate-fade-in-out';
+            toast.textContent = message;
+            
+            // 添加到页面
+            document.body.appendChild(toast);
+            
+            // 2秒后移除
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 500);
+            }, 2000);
+        }
+        
+        // 检查URL参数中是否有优惠券ID或分享ID
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const couponId = urlParams.get('coupon');
+            const shareId = urlParams.get('share');
+            
+            if (couponId) {
+                // 切换到核销页面
+                switchTab('verify');
+                
+                // 延迟验证，模拟网络请求
+                setTimeout(() => {
+                    verifyCoupon(couponId);
+                }, 1000);
+            } else if (shareId) {
+                // 查找分享的优惠券
+                const sharedCoupon = coupons.find(c => c.shareId === shareId);
+                
+                if (sharedCoupon) {
+                    // 显示优惠券详情模态框
+                    showCouponDetail(sharedCoupon.id);
+                    
+                    // 添加领取优惠券的提示
+                    const detailModal = document.getElementById('coupon-detail-modal');
+                    const detailContent = document.getElementById('coupon-detail-content');
+                    
+                    // 添加领取按钮
+                    const actionButtons = document.createElement('div');
+                    actionButtons.className = 'flex justify-center mt-4';
+                    actionButtons.innerHTML = `
+                        <button id="claim-coupon-btn" class="bg-primary text-white py-2 px-6 rounded-md hover:opacity-90 transition-all duration-300">
+                            <i class="fa fa-check-circle mr-2"></i>
+                            领取优惠券
+                        </button>
+                    `;
+                    
+                    detailContent.appendChild(actionButtons);
+                    
+                    // 添加领取按钮点击事件
+                    document.getElementById('claim-coupon-btn').addEventListener('click', function() {
+                        // 显示成功提示
+                        showToast('优惠券领取成功！');
+                        
+                        // 关闭模态框
+                        detailModal.classList.add('hidden');
+                        
+                        // 切换到管理页面
+                        switchTab('manage');
+                    });
+                }
+            }
+        }
+        
+        // 页面加载完成后检查URL参数
+        window.addEventListener('load', checkUrlParams);
+    </script>
+</body>
+</html>
